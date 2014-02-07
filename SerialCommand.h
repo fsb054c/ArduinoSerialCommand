@@ -4,7 +4,7 @@ a serial port.
 Copyright (C) 2011-2013 Steven Cogswell  <steven.cogswell@gmail.com>
 http://awtfy.com
 
-Version 20131021A.   
+Version 20140207A.   
 
 Version History:
 May 11 2011 - Initial version
@@ -17,6 +17,7 @@ Oct 2013 - SerialCommand object can be created using a SoftwareSerial object, fo
            a SoftwareSerial port in the project.  sigh.   See Example Sketch for usage. 
 Oct 2013 - Conditional compilation for the SoftwareSerial support, in case you really, really
            hate it and want it removed.  
+Feb 2014 - Made the changes to support Mega Serial 1/2/3 and to select serial from the library constructor
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -49,8 +50,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 // You don't have to use SoftwareSerial features if this is not defined, you can still only use 
 // the Hardware serial port, just that this way lets you get out of having to include 
 // the SoftwareSerial.h header. 
-//#define SERIALCOMMAND_HARDWAREONLY 1
-#undef SERIALCOMMAND_HARDWAREONLY
+#define SERIALCOMMAND_HARDWAREONLY 1
+//#undef SERIALCOMMAND_HARDWAREONLY
 
 #ifdef SERIALCOMMAND_HARDWAREONLY
 #warning "Warning: Building SerialCommand without SoftwareSerial Support"
@@ -70,10 +71,36 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #define SERIALCOMMANDDEBUG 1
 #undef SERIALCOMMANDDEBUG      // Comment this out to run the library in debug mode (verbose messages)
 
+
 class SerialCommand
 {
 	public:
+		typedef enum _serialPortID {
+		#ifndef SERIALCOMMAND_HARDWAREONLY
+			SW_SERIAL,
+		#endif
+			SERIAL0,
+		#if defined(UBRR1H)
+			SERIAL1,
+		#endif
+
+		#if defined(UBRR2H)
+			SERIAL2,
+		#endif
+
+		#if defined(UBRR3H)
+			SERIAL3
+		#endif
+		} serialPortID;
+
 		SerialCommand();      // Constructor
+
+		#ifndef SERIALCOMMAND_HARDWAREONLY
+		SerialCommand(serialPortID SerialPort, SoftwareSerial *_SoftSer = NULL); //Constrictor for the user selected serial
+		#else
+		SerialCommand(serialPortID SerialPort); //Constrictor for the user selected serial
+		#endif
+
 		#ifndef SERIALCOMMAND_HARDWAREONLY
 		SerialCommand(SoftwareSerial &SoftSer);  // Constructor for using SoftwareSerial objects
 		#endif
@@ -96,13 +123,15 @@ class SerialCommand
 			char command[SERIALCOMMANDBUFFER];
 			void (*function)();
 		} SerialCommandCallback;            // Data structure to hold Command/Handler function key-value pairs
+
 		int numCommand;
 		SerialCommandCallback CommandList[MAXSERIALCOMMANDS];   // Actual definition for command/handler array
 		void (*defaultHandler)();           // Pointer to the default handler function 
-		int usingSoftwareSerial;            // Used as boolean to see if we're using SoftwareSerial object or not
+		serialPortID selectedSerialPort;    // Serial port selected by caller
 		#ifndef SERIALCOMMAND_HARDWAREONLY 
-		SoftwareSerial *SoftSerial;         // Pointer to a user-created SoftwareSerial object
+		SoftwareSerial *SoftSerial;         // Pointer to a created SoftwareSerial object
 		#endif
+		HardwareSerial *HardSerial;         // Pointer to a HardwareSerial object
 };
 
 #endif //SerialCommand_h
